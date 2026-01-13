@@ -75,13 +75,14 @@ class IndicePreciosConsumo:
         """Limpieza de datos"""
 
         data = data.copy()
-        data = data.dropna()
+        data = data.dropna(ignore_index=True)
         data = data[data["Nombre"] == keep]
+        data = data.drop(data.columns[2], axis=1) # borro la columna de 'Descripcion'
         data.iloc[:,0] = f"{self.month.title()}{self.year}"
+        data.iloc[:,1] = data.iloc[:,1].astype(str)
         data.columns = [
             'Periodo',
             'Division',
-            'Descripcion',
             'Ponderacion',
             'Indice',
             'Var_mensual',
@@ -90,5 +91,4 @@ class IndicePreciosConsumo:
             'Incidencia',
         ]
 
-
-        return data.reset_index(drop=True)
+        return data

@@ -4,6 +4,7 @@
 from dataclasses import dataclass, field
 from io import StringIO
 
+import numpy as np
 import pandas as pd
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -35,8 +36,8 @@ class IndiceMedioSalarios:
 
         self.navigate()
         data = self.get_data()
-        # data = self.clean_data(data)
-        return data
+        data = self.clean_data(data)
+        return data[[data.columns[-1]] + list(data.columns[:-1])]
 
     def navigate(self, wait_time:int=1) -> None:
         """Carga le dataframe desde la web"""
@@ -47,30 +48,60 @@ class IndiceMedioSalarios:
             )
         elemento.click()
 
-    def get_data(
-        self,
-        wait_time:int=3,
-    ) -> pd.DataFrame:
+    def get_data(self, wait_time:int=1) -> pd.DataFrame:
         """Obtiene la data desde la web"""
 
+        table_xpath=f'//*[@id="{self.month}-{self.year-1}---{self.month}-{self.year}"]/div[2]/table'
         WebDriverWait(self.driver, wait_time).until(
-            EC.presence_of_element_located((By.TAG_NAME, "table"))
-        )
+                EC.presence_of_element_located((By.XPATH, table_xpath))
+            )
 
-        html_content = StringIO(self.driver.page_source)
-        tablas = pd.read_html(html_content)
+        table = self.driver.find_element(By.XPATH, table_xpath)
+        tabla_html = table.get_attribute('outerHTML')
+        html_content = StringIO(tabla_html)
+        tablas = pd.read_html(html_content, decimal=".", thousands=".")
 
-        if not tablas:
-            raise ValueError("   -- [ERROR]: No se encontraron tablas en la pagina")
+        if tablas:
+            return tablas[0]
+        else:
+            raise ValueError("  -- [ERROR]: No se encontró la tabla con el ID especificado.")
 
-        return tablas[0]
-
-    def clean_data(
-        self,
-        data:pd.DataFrame,
-    ) -> pd.DataFrame:
+    def clean_data(self, data:pd.DataFrame) -> pd.DataFrame:
         """Limpieza de datos"""
 
         data = data.copy()
-        data = data.dropna()
-        return data.reset_index(drop=True)
+        data = self.adjust_data(data)
+        data = self.filter_data(data)
+        data["Periodo"] = f"{self.month.title()}{self.year}"
+        data.columns = self.set_colnames()
+        return data
+
+    def adjust_data(self, data:pd.DataFrame) -> pd.DataFrame:
+        """Ajusto valores faltantes y transformo columnas a float"""
+
+        data = data.dropna(ignore_index=True)
+        data = data.replace(r"\(\s*s\s*\)", np.nan, regex=True)
+        data.iloc[:,1:] = data.iloc[:,1:].replace(",", ".", regex=True).astype(float)
+        data.iloc[:,0] = data.iloc[:,0].str[0] # me quedo con la primer letra
+        return data
+
+    def filter_data(self, data:pd.DataFrame) -> pd.DataFrame:
+        """Para proyecto de ejemplo, me quedo solo con las categorias"""
+
+        col = data.columns[0]
+        data = data[data[col].str.match(r"^[A-Za-z]")]
+        data = data.iloc[1:,:].reset_index(drop=True)
+        return data
+
+    def set_colnames(self) -> list[str]:
+        """Ajusto nombre de las columnas"""
+
+        return [
+            'Sector',
+            'Indice',
+            'Mes',
+            'AcumuladoAnual',
+            'UltimosDoceMeses',
+            'Incidencias',
+            'Periodo',
+        ]
