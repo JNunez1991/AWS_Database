@@ -3,7 +3,7 @@
 
 from dataclasses import dataclass, field, asdict
 
-from config import Rutas, Meses
+from config import Rutas, Meses, TableNames
 from src.utils import Utils
 from src.webscrap import Webscrapping
 from src.connection import Connection
@@ -36,11 +36,15 @@ class Main:
         webscr = Webscrapping(Rutas.INE_URL, mes, anio)
         data = webscr.run_all()
 
+        # Guardo la data en bbdd
+        conection.persist_data(data.ipc, TableNames.IPC, conn.engine)
+        conection.persist_data(data.ims, TableNames.IMS, conn.engine)
+        conection.persist_data(data.iccv, TableNames.ICCV, conn.engine)
 
-        return conn, data
+        return data
 
 
 if __name__ == "__main__":
 
     main = Main()
-    results = main.run_all()
+    dataframes = main.run_all()

@@ -13,6 +13,11 @@ class Rutas(StrEnum):
     INE_URL = "https://www.gub.uy/instituto-nacional-estadistica/comunicacion/publicaciones"
 
 
+class TableNames(StrEnum):
+    """Nombres de las tablas"""
+    IPC = "t_ipc"
+    IMS = "t_ims"
+    ICCV = "t_iccv"
 
 @dataclass(frozen=True)
 class Meses:

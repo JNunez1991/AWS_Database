@@ -4,13 +4,13 @@
 import os
 from dataclasses import dataclass
 
+import pandas as pd
+from dotenv import load_dotenv
 import mysql.connector as mysql
 from mysql.connector.connection import MySQLConnection
 from mysql.connector.cursor import MySQLCursor
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
-
-from dotenv import load_dotenv
 
 from .blueprint import Credentials, SqlStructures
 
@@ -61,7 +61,7 @@ class Connection:
                 user = credentials.user,
                 password = credentials.password,
             )
-            print(" -. Conexion a base de datos exitosa...")
+            print("  -. Conexion exitosa a base de datos...")
             return conn # type:ignore
         except mysql.Error as exc:
             msg = " -- [ERROR]: No se pudo establacer conexion con la base de datos. Verifique."
@@ -84,3 +84,50 @@ class Connection:
         )
 
         return engine
+
+    def persist_data(
+        self,
+        data:pd.DataFrame,
+        tablename:str,
+        engine:Engine,
+    ) -> None:
+        """Almacena la data en bbdd, y cuenta los registros persistidos"""
+
+        before = self.get_total_rows(tablename, engine)
+        self.data_to_ddbb(data, tablename, engine)
+        after = self.get_total_rows(tablename, engine)
+        print(f"    --> Se añadieron {after - before} registros en la tabla '{tablename}'")
+
+    def get_total_rows(
+        self,
+        tablename:str,
+        engine:Engine,
+        stored_procedure:str = "sp_total_rows"
+    ) -> int:
+        """Cuenta la cantidad de filas en cierta tabla"""
+
+        with engine.begin() as conn:
+            conn.execute(
+                text(f"CALL {stored_procedure}(:table, @total)"),
+                {"table": tablename}
+            )
+            return conn.execute(text("SELECT @total")).scalar() # type:ignore
+
+    def data_to_ddbb(
+        self,
+        data:pd.DataFrame,
+        tablename:str,
+        engine:Engine,
+    ) -> None:
+        """Persiste la data en bbdd"""
+
+        try:
+            data.to_sql(
+                name=tablename,
+                con=engine,
+                if_exists="append",
+                index=False,
+            )
+        except mysql.Error as exc:
+            msg = f"    --> [ERROR]: No se pudieron persistir los datos en '{tablename}'"
+            raise ConnectionError(msg) from exc
