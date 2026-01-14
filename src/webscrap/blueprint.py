@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Orquestador principal de webscrapping"""
+"""Clase comun al resto de archivos del modulo"""
 
 from dataclasses import dataclass
 

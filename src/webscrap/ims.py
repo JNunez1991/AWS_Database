@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Descarga, limpia y filtra los datos de IMS"""
 
+import re
 from dataclasses import dataclass, field
 from io import StringIO
 
@@ -58,6 +59,8 @@ class IndiceMedioSalarios:
 
         table = self.driver.find_element(By.XPATH, table_xpath)
         tabla_html = table.get_attribute('outerHTML')
+        html_limpio = self.clean_html(tabla_html) # type:ignore
+        html_content = StringIO(html_limpio)
         html_content = StringIO(tabla_html)
         tablas = pd.read_html(html_content, decimal=".", thousands=".")
 
@@ -65,6 +68,13 @@ class IndiceMedioSalarios:
             return tablas[0]
         else:
             raise ValueError("  -- [ERROR]: No se encontró la tabla con el ID especificado.")
+
+    def clean_html(self, html:str) -> str:
+        """Limpia el html"""
+
+        new_html = html.replace('colspan="100%"', 'colspan="5"') #type:ignore
+        new_html = re.sub(r'<tfoot>.*?</tfoot>', '', new_html, flags=re.DOTALL)
+        return new_html
 
     def clean_data(self, data:pd.DataFrame) -> pd.DataFrame:
         """Limpieza de datos"""

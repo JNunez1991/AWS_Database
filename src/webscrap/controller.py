@@ -12,7 +12,7 @@ from .iccv import IndiceCostoConstruccionVivienda
 
 
 @dataclass
-class Run:
+class Webscrapping:
     """Obtengo los datos de Nasdaq del ultimo mes"""
 
     url: str

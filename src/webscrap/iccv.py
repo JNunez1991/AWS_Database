@@ -38,7 +38,6 @@ class IndiceCostoConstruccionVivienda:
         data = self.get_data()
         data = self.clean_data(data)
         return data[[data.columns[-1]] + list(data.columns[:-1])]
-        return data
 
     def navigate(self, wait_time:int=1) -> None:
         """Carga le dataframe desde la web"""
