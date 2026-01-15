@@ -4,9 +4,9 @@
 from dataclasses import dataclass, field, asdict
 
 from config import Rutas, Meses, TableNames
+from src.connection import SetConnection
 from src.utils import Utils
 from src.webscrap import Webscrapping
-from src.connection import SetConnection
 
 
 @dataclass
@@ -21,8 +21,11 @@ class Main:
         meses = asdict(Meses())
         self.utils = Utils(meses)
 
-    def run_all(self):
+    def run_all(self) -> None:
         """Ejecuta el proceso paso a paso"""
+
+        # Titulo en consola
+        self.utils.print_header("Webscrapping & AWS storage")
 
         # Obtiene año/mes desde el usuario
         anio, mes = self.utils.user_input()
@@ -37,14 +40,12 @@ class Main:
         data = webscr.run_all()
 
         # Guardo la data en bbdd
-        conection.to_datablase(data.ipc, TableNames.IPC, conn.engine)
-        conection.to_datablase(data.ims, TableNames.IMS, conn.engine)
-        conection.to_datablase(data.iccv, TableNames.ICCV, conn.engine)
-
-        return data
+        conection.to_database(data.ipc, TableNames.IPC, conn.engine)
+        conection.to_database(data.ims, TableNames.IMS, conn.engine)
+        conection.to_database(data.iccv, TableNames.ICCV, conn.engine)
 
 
 if __name__ == "__main__":
 
     main = Main()
-    dataframes = main.run_all()
+    main.run_all()

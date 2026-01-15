@@ -15,6 +15,7 @@ class Rutas(StrEnum):
 
 class TableNames(StrEnum):
     """Nombres de las tablas"""
+
     IPC = "t_ipc"
     IMS = "t_ims"
     ICCV = "t_iccv"

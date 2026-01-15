@@ -4,12 +4,19 @@
 from dataclasses import dataclass
 
 import arrow
+import pyfiglet
 
 @dataclass
 class Utils:
     """Funciones auxiliares"""
 
     meses:dict[str, int]
+
+    def print_header(self, texto:str, font="slant") -> None:
+        """Titulo en consola"""
+
+        titulo = pyfiglet.figlet_format(texto, font=font)
+        print(titulo)
 
     def user_input(self) -> tuple[int, int]:
         """Mes y Año ingresado por el usuario"""

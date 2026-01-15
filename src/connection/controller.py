@@ -6,17 +6,14 @@ from dataclasses import dataclass
 from typing import Iterable
 
 import pandas as pd
-import mysql.connector as mysql
 from dotenv import load_dotenv
-from mysql.connector.connection import MySQLConnection
-from mysql.connector.cursor import MySQLCursor
 from pandas.io.sql import SQLTable
 from sqlalchemy import create_engine, text
 from sqlalchemy.dialects.mysql import insert
-from sqlalchemy.engine import Engine
-from sqlalchemy.engine import Connection
+from sqlalchemy.engine import Connection, Engine
+from sqlalchemy.exc import SQLAlchemyError
 
-from .blueprint import Credentials, SqlStructures
+from .blueprint import Credentials
 
 @dataclass
 class SetConnection:
@@ -30,18 +27,11 @@ class SetConnection:
         fullpath = os.path.join(self.path, ".env")
         load_dotenv(fullpath)
 
-    def run_all(self) -> SqlStructures:
+    def run_all(self) -> Engine:
         """Ejecuta todo el proceso"""
 
         credentials = self.get_credentials()
-        conector = self.set_connection(credentials)
-        cursor = self.set_cursor(conector)
-        engine = self.set_engine(credentials)
-        return SqlStructures(
-            connector=conector,
-            cursor=cursor,
-            engine=engine,
-        )
+        return self.set_engine(credentials)
 
     def get_credentials(self) -> Credentials:
         """Extrae las credenciales del .env"""
@@ -54,42 +44,27 @@ class SetConnection:
             password=os.getenv("PSW1"), # type:ignore
         )
 
-    def set_connection(self, credentials:Credentials) -> MySQLConnection:
-        """Conexion a la bbdd"""
-
-        try:
-            conn = mysql.connect( #type:ignore
-                host = credentials.host,
-                port = credentials.port,
-                database = credentials.database,
-                user = credentials.user,
-                password = credentials.password,
-            )
-            print("  -. Conexion exitosa a base de datos...")
-            return conn # type:ignore
-        except mysql.Error as exc:
-            msg = " -- [ERROR]: No se pudo establacer conexion con la base de datos. Verifique."
-            raise ConnectionError(msg) from exc
-
-    def set_cursor(self, connector:MySQLConnection) -> MySQLCursor:
-        """Genero el cursor de la conexion"""
-
-        return connector.cursor()
-
     def set_engine(self, credentials:Credentials) -> Engine:
-        """Genera el motor"""
+        """
+        Genera el motor, el cual se encarga de:
+            - Abrir la conexion
+            - La devuelve al pool
+            - Hace commit / rollbach
+            - Maneja errores
+            - Evita dejar conexiones abiertas
+        """
 
-        engine = create_engine(
-            f"mysql+mysqlconnector://"
+        return create_engine(
+            f"mysql+pymysql://"
             f"{credentials.user}:{credentials.password}@"
             f"{credentials.host}:"
             f"{credentials.port}/"
-            f"{credentials.database}"
+            f"{credentials.database}",
+            pool_pre_ping=True,
+            future=True,
         )
 
-        return engine
-
-    def to_datablase(
+    def to_database(
         self,
         data:pd.DataFrame,
         tablename:str,
@@ -101,7 +76,6 @@ class SetConnection:
         self.data_to_ddbb(data, tablename, engine)
         after = self.get_total_rows(tablename, engine)
         print(f"    --> Se añadieron {after - before} registros en la tabla '{tablename}'")
-
 
     def get_total_rows(
         self,
@@ -134,7 +108,7 @@ class SetConnection:
                 index=False,
                 method=self.insert_ignore,
             )
-        except mysql.Error as exc:
+        except SQLAlchemyError as exc:
             msg = f"    --> [ERROR]: No se pudieron persistir los datos en '{tablename}'"
             raise ConnectionError(msg) from exc
 

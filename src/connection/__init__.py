@@ -2,3 +2,4 @@
 """Clases de la carpeta"""
 
 from .controller import SetConnection
+from .blueprint import Credentials
